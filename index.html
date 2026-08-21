@@ -76,5 +76,27 @@ $('bookForm').addEventListener('submit', async e => {
     toast(error.message || 'Booking failed.');
 function setPayment(i,v){state.teams[i].payment=v;save();toast('Payment updated.')}function saveSettings(){let max=Math.min(12,Math.max(1,+$('aMax').value||12));if(state.teams.length>max)return toast('Maximum cannot be below current bookings.');state.settings={title:$('aTitle').value.trim()||'SK Esports Daily Scrim',fee:+$('aFee').value||0,min:Math.min(max,Math.max(1,+$('aMin').value||10)),max};save();toast('Settings saved.')}
 function exportData(){let b=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download='sk-esports-registrations.json';a.click();URL.revokeObjectURL(u)}
-function resetData(){if(confirm('Reset all registrations?')){localStorage.removeItem(KEY);location.reload()}}render();
+ function resetData(){if(confirm('Reset all registrations?')){localStorage.removeItem(KEY);location.reload()}}async function loadTeams() {
+  const { data, error } = await supabaseClient
+    .from('team')
+    .select('team_name, Whatsapp, IGN, Players, Payment_status, Slots_number, Created_at')
+    .order('Slots_number', { ascending: true });
+
+  if (error) {
+    console.error(error);
+    return toast('Could not load bookings.');
+  }
+
+  state.teams = data.map(x => ({
+    name: x.team_name,
+    ign: x.IGN,
+    phone: x.Whatsapp,
+    players: x.Players,
+    payment: x.Payment_status,
+    slot: x.Slots_number
+  }));
+
+  render();
+  }
+    render();
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script></script></body></html>
