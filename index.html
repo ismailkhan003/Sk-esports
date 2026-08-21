@@ -40,4 +40,4 @@ $('bookForm').addEventListener('submit',e=>{e.preventDefault();let name=$('team'
 function setPayment(i,v){state.teams[i].payment=v;save();toast('Payment updated.')}function saveSettings(){let max=Math.min(12,Math.max(1,+$('aMax').value||12));if(state.teams.length>max)return toast('Maximum cannot be below current bookings.');state.settings={title:$('aTitle').value.trim()||'SK Esports Daily Scrim',fee:+$('aFee').value||0,min:Math.min(max,Math.max(1,+$('aMin').value||10)),max};save();toast('Settings saved.')}
 function exportData(){let b=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download='sk-esports-registrations.json';a.click();URL.revokeObjectURL(u)}
 function resetData(){if(confirm('Reset all registrations?')){localStorage.removeItem(KEY);location.reload()}}render();
-</script></body></html>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script></script></body></html>
