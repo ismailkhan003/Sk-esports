@@ -29,16 +29,126 @@
 <div style="display:flex;gap:10px;flex-wrap:wrap;margin:15px 0"><button class="btn" onclick="saveSettings()">SAVE</button><button class="btn secondary" onclick="exportData()">EXPORT</button><button class="btn" style="background:#5d1728" onclick="resetData()">RESET</button></div><div id="adminTeams"></div></div></div>
 <div class="toast" id="toast"></div>
 <script>
-  const SUPABASE_URL = 'https://pnmxpacusnguwtlhxqmk.supabase.co';
+const SUPABASE_URL = 'https://pnmxpacusnguwtlhxqmk.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_Z6T1aAf8UwvV5Qs26dbCZw_L8PFS4E5';
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-const KEY='sk_esports_v3';let state=JSON.parse(localStorage.getItem(KEY)||'null')||{settings:{title:'SK Esports Daily Scrim',fee:50,min:10,max:12},teams:[]};
-const $=id=>document.getElementById(id);function save(){localStorage.setItem(KEY,JSON.stringify(state));render()}function esc(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
-function render(){let s=state.settings,t=state.teams;$('eventTitle').textContent=s.title;$('fee').textContent='Rs. '+s.fee;$('count').textContent=`${t.length} / ${s.max}`;$('bar').style.width=t.length/s.max*100+'%';$('status').textContent=t.length>=s.max?'FULL':'OPEN';$('status').style.color=t.length>=s.max?'var(--r)':'var(--g)';
-$('teamList').innerHTML=t.length?t.map((x,i)=>`<div class="team"><span><b>Slot Slot ${String(x.slot).padStart(2,'0')}</b> — ${esc(x.name)}</span><span class="status ${x.payment==='Unpaid'?'cross':x.payment==='Pending'?'pending':''}">${x.payment}</span></div>`).join(''):'<p class="note">No teams booked yet. Be the first.</p>';
-$('adminTeams').innerHTML=t.length?'<h3>Manage payments</h3>'+t.map((x,i)=>`<div class="admin-item"><b>Slot ${i+1} — ${esc(x.name)}</b><div class="note">${esc(x.ign)} • ${esc(x.phone)}</div><select onchange="setPayment(${i},this.value)"><option ${x.payment==='Pending'?'selected':''}>Pending</option><option ${x.payment==='Paid'?'selected':''}>Paid</option><option ${x.payment==='Unpaid'?'selected':''}>Unpaid</option></select></div>`).join(''):'<p class="note">No registrations.</p>'}
-function toast(m){$('toast').textContent=m;$('toast').classList.add('show');setTimeout(()=>$('toast').classList.remove('show'),2200)}
-function openBook(){if(state.teams.length>=state.settings.max)return toast('All 12 slots are full.');$('bookModal').classList.add('show')}function closeBook(){$('bookModal').classList.remove('show')}function openAdmin(){$('aTitle').value=state.settings.title;$('aFee').value=state.settings.fee;$('aMin').value=state.settings.min;$('aMax').value=state.settings.max;$('adminModal').classList.add('show')}function closeAdmin(){$('adminModal').classList.remove('show')}
+
+const KEY = 'sk_esports_v3';
+
+let state = {
+  settings: {
+    title: 'SK Esports Daily Scrim',
+    fee: 50,
+    min: 10,
+    max: 12
+  },
+  teams: []
+};
+
+const $ = id => document.getElementById(id);
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, m => ({
+    '&':'&amp;',
+    '<':'&lt;',
+    '>':'&gt;',
+    '"':'&quot;',
+    "'":'&#39;'
+  }[m]));
+}
+
+function toast(m) {
+  $('toast').textContent = m;
+  $('toast').classList.add('show');
+
+  setTimeout(() => {
+    $('toast').classList.remove('show');
+  }, 2500);
+}
+
+function render() {
+  let s = state.settings;
+  let t = state.teams;
+
+  $('eventTitle').textContent = s.title;
+  $('fee').textContent = 'Rs. ' + s.fee;
+  $('count').textContent = `${t.length} / ${s.max}`;
+
+  $('bar').style.width =
+    Math.min(100, (t.length / s.max) * 100) + '%';
+
+  $('status').textContent =
+    t.length >= s.max ? 'FULL' : 'OPEN';
+
+  $('status').style.color =
+    t.length >= s.max ? 'var(--r)' : 'var(--g)';
+
+  $('teamList').innerHTML = t.length
+    ? t.map(x => `
+      <div class="team">
+        <span>
+          <b>Slot ${String(x.slot).padStart(2,'0')}</b>
+          — ${esc(x.name)}
+        </span>
+
+        <span class="status ${
+          x.payment === 'Unpaid'
+            ? 'cross'
+            : x.payment === 'Pending'
+            ? 'pending'
+            : ''
+        }">
+          ${esc(x.payment)}
+        </span>
+      </div>
+    `).join('')
+    : '<p class="note">No teams booked yet. Be the first.</p>';
+
+  $('adminTeams').innerHTML = t.length
+    ? '<h3>Manage payments</h3>' +
+      t.map(x => `
+        <div class="admin-item">
+          <b>Slot ${x.slot} — ${esc(x.name)}</b>
+
+          <div class="note">
+            ${esc(x.ign)} • ${esc(x.phone)}
+          </div>
+
+          <select onchange="setPayment(${x.slot},this.value)">
+            <option ${x.payment === 'Pending' ? 'selected' : ''}>Pending</option>
+            <option ${x.payment === 'Paid' ? 'selected' : ''}>Paid</option>
+            <option ${x.payment === 'Unpaid' ? 'selected' : ''}>Unpaid</option>
+          </select>
+        </div>
+      `).join('')
+    : '<p class="note">No registrations.</p>';
+}
+
+function openBook() {
+  if (state.teams.length >= state.settings.max) {
+    return toast('All 12 slots are full.');
+  }
+
+  $('bookModal').classList.add('show');
+}
+
+function closeBook() {
+  $('bookModal').classList.remove('show');
+}
+
+function openAdmin() {
+  $('aTitle').value = state.settings.title;
+  $('aFee').value = state.settings.fee;
+  $('aMin').value = state.settings.min;
+  $('aMax').value = state.settings.max;
+
+  $('adminModal').classList.add('show');
+}
+
+function closeAdmin() {
+  $('adminModal').classList.remove('show');
+}
+
 $('bookForm').addEventListener('submit', async e => {
   e.preventDefault();
 
@@ -63,20 +173,24 @@ $('bookForm').addEventListener('submit', async e => {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      throw error;
+    }
 
     closeBook();
     e.target.reset();
 
     toast(`Slot ${data.Slots_number} reserved successfully!`);
+
     await loadTeams();
 
   } catch (error) {
     console.error(error);
     toast(error.message || 'Booking failed.');
-function setPayment(i,v){state.teams[i].payment=v;save();toast('Payment updated.')}function saveSettings(){let max=Math.min(12,Math.max(1,+$('aMax').value||12));if(state.teams.length>max)return toast('Maximum cannot be below current bookings.');state.settings={title:$('aTitle').value.trim()||'SK Esports Daily Scrim',fee:+$('aFee').value||0,min:Math.min(max,Math.max(1,+$('aMin').value||10)),max};save();toast('Settings saved.')}
-function exportData(){let b=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download='sk-esports-registrations.json';a.click();URL.revokeObjectURL(u)}
- function resetData(){if(confirm('Reset all registrations?')){localStorage.removeItem(KEY);location.reload()}}async function loadTeams() {
+  }
+});
+
+async function loadTeams() {
   const { data, error } = await supabaseClient
     .from('team')
     .select('team_name, Whatsapp, IGN, Players, Payment_status, Slots_number, Created_at')
@@ -97,6 +211,77 @@ function exportData(){let b=new Blob([JSON.stringify(state,null,2)],{type:'appli
   }));
 
   render();
+}
+
+async function setPayment(slot, value) {
+  const { error } = await supabaseClient
+    .from('team')
+    .update({
+      Payment_status: value
+    })
+    .eq('Slots_number', slot);
+
+  if (error) {
+    console.error(error);
+    return toast('Payment update failed.');
   }
-    render();
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script></script></body></html>
+
+  toast('Payment updated.');
+  await loadTeams();
+}
+
+function saveSettings() {
+  let max = Math.min(
+    12,
+    Math.max(1, +$('aMax').value || 12)
+  );
+
+  if (state.teams.length > max) {
+    return toast('Maximum cannot be below current bookings.');
+  }
+
+  state.settings = {
+    title:
+      $('aTitle').value.trim() ||
+      'SK Esports Daily Scrim',
+
+    fee: +$('aFee').value || 0,
+
+    min: Math.min(
+      max,
+      Math.max(1, +$('aMin').value || 10)
+    ),
+
+    max
+  };
+
+  render();
+  toast('Settings saved.');
+}
+
+function exportData() {
+  let b = new Blob(
+    [JSON.stringify(state, null, 2)],
+    {type:'application/json'}
+  );
+
+  let u = URL.createObjectURL(b);
+  let a = document.createElement('a');
+
+  a.href = u;
+  a.download = 'sk-esports-registrations.json';
+  a.click();
+
+  URL.revokeObjectURL(u);
+}
+
+function resetData() {
+  if (confirm('Reset local settings?')) {
+    localStorage.removeItem(KEY);
+    location.reload();
+  }
+}
+
+loadTeams();
+</script>
+></script></body></html>
