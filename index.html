@@ -39,7 +39,41 @@ $('teamList').innerHTML=t.length?t.map((x,i)=>`<div class="team"><span><b>Slot $
 $('adminTeams').innerHTML=t.length?'<h3>Manage payments</h3>'+t.map((x,i)=>`<div class="admin-item"><b>Slot ${i+1} — ${esc(x.name)}</b><div class="note">${esc(x.ign)} • ${esc(x.phone)}</div><select onchange="setPayment(${i},this.value)"><option ${x.payment==='Pending'?'selected':''}>Pending</option><option ${x.payment==='Paid'?'selected':''}>Paid</option><option ${x.payment==='Unpaid'?'selected':''}>Unpaid</option></select></div>`).join(''):'<p class="note">No registrations.</p>'}
 function toast(m){$('toast').textContent=m;$('toast').classList.add('show');setTimeout(()=>$('toast').classList.remove('show'),2200)}
 function openBook(){if(state.teams.length>=state.settings.max)return toast('All 12 slots are full.');$('bookModal').classList.add('show')}function closeBook(){$('bookModal').classList.remove('show')}function openAdmin(){$('aTitle').value=state.settings.title;$('aFee').value=state.settings.fee;$('aMin').value=state.settings.min;$('aMax').value=state.settings.max;$('adminModal').classList.add('show')}function closeAdmin(){$('adminModal').classList.remove('show')}
-$('bookForm').addEventListener('submit',e=>{e.preventDefault();let name=$('team').value.trim();if(state.teams.some(x=>x.name.toLowerCase()===name.toLowerCase()))return toast('Team already registered.');state.teams.push({name,ign:$('ign').value.trim(),phone:$('phone').value.trim(),players:$('players').value.trim(),payment:'Pending'});save();closeBook();e.target.reset();toast('Slot reserved successfully.')});
+$('bookForm').addEventListener('submit', async e => {
+  e.preventDefault();
+
+  const name = $('team').value.trim();
+  const ign = $('ign').value.trim();
+  const phone = $('phone').value.trim();
+  const players = $('players').value.trim();
+
+  if (!name || !ign || !phone || !players) {
+    return toast('Please fill all fields.');
+  }
+
+  try {
+    const { data, error } = await supabaseClient
+      .from('team')
+      .insert({
+        team_name: name,
+        Whatsapp: phone,
+        IGN: ign,
+        Players: players
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    closeBook();
+    e.target.reset();
+
+    toast(`Slot ${data.Slots_number} reserved successfully!`);
+    await loadTeams();
+
+  } catch (error) {
+    console.error(error);
+    toast(error.message || 'Booking failed.');
 function setPayment(i,v){state.teams[i].payment=v;save();toast('Payment updated.')}function saveSettings(){let max=Math.min(12,Math.max(1,+$('aMax').value||12));if(state.teams.length>max)return toast('Maximum cannot be below current bookings.');state.settings={title:$('aTitle').value.trim()||'SK Esports Daily Scrim',fee:+$('aFee').value||0,min:Math.min(max,Math.max(1,+$('aMin').value||10)),max};save();toast('Settings saved.')}
 function exportData(){let b=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download='sk-esports-registrations.json';a.click();URL.revokeObjectURL(u)}
 function resetData(){if(confirm('Reset all registrations?')){localStorage.removeItem(KEY);location.reload()}}render();
